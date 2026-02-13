@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <title>Display Master Test</title>
+    <style>
+        :root {
+            --bg-dark: #121212;
+            --card-bg: rgba(30, 30, 30, 0.6);
+            --primary-green: #2ecc71;
+            --accent-blue: #3498db;
+            --text-gray: #aaaaaa;
+            --glass-border: rgba(255, 255, 255, 0.1);
+        }
+
+        body, html {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            overflow: hidden; background-color: var(--bg-dark);
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: white;
+            touch-action: none;
+        }
+
+        /* Логотип */
+        #app-logo {
+            position: fixed; top: 20px; left: 20px;
+            font-size: 1.2rem; font-weight: bold; z-index: 1001;
+            display: flex; align-items: center; gap: 8px;
+            background: rgba(0,0,0,0.3); padding: 5px 12px;
+            border-radius: 10px; backdrop-filter: blur(5px);
+            border: 1px solid var(--glass-border);
+            pointer-events: none; transition: 0.3s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .screen {
+            display: none; width: 100%; height: 100%;
+            flex-direction: column; justify-content: center; align-items: center;
+            position: absolute; top: 0; left: 0;
+        }
+        
+        .active { display: flex; animation: fadeIn 0.4s ease-out forwards; }
+
+        .menu-container { text-align: center; max-width: 500px; width: 90%; }
+        
+        .glass-btn-large {
+            padding: 25px 80px; font-size: 1.8rem; color: white;
+            background: rgba(46, 204, 113, 0.2);
+            border: 3px solid var(--primary-green);
+            border-radius: 25px; cursor: pointer;
+            backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
+            font-weight: 800; transition: 0.3s;
+            box-shadow: 0 0 30px rgba(46, 204, 113, 0.3);
+            text-transform: uppercase; letter-spacing: 2px;
+        }
+
+        .test-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 20px; margin: 12px 0;
+            cursor: pointer; transition: 0.3s ease;
+            text-align: left;
+        }
+
+        #screen-info { padding: 20px; box-sizing: border-box; justify-content: flex-start; overflow-y: auto;}
+        .info-wrapper { width: 100%; max-width: 450px; margin-top: 80px; display: grid; grid-template-columns: 1fr; gap: 10px; padding-bottom: 40px;}
+        .info-row { display: flex; align-items: flex-start; gap: 15px; background: rgba(255,255,255,0.03); padding: 12px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.05); }
+        .info-icon { width: 40px; height: 40px; background: #252525; border-radius: 10px; display: flex; justify-content: center; align-items: center; font-size: 1.2rem; border: 1px solid #333; flex-shrink: 0; }
+        .info-text b { display: block; color: #ff8c00; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 2px; }
+        .info-text div { color: #eee; font-size: 0.9rem; word-break: break-all; }
+
+        canvas { display: block; }
+        .overlay-info {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            font-size: 8rem; font-weight: bold; color: rgba(255, 255, 255, 0.08);
+            pointer-events: none; user-select: none;
+        }
+
+        #dpi-controls {
+            position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
+            background: rgba(0,0,0,0.8); padding: 15px; border-radius: 15px; display: none; gap: 15px; border: 1px solid #444;
+        }
+        
+        .back-btn {
+            position: fixed; top: 20px; right: 20px; /* Сместил вправо, чтобы не мешать логотипу слева */
+            padding: 10px 20px; background: rgba(255,255,255,0.1);
+            border: 1px solid var(--glass-border); color: white; border-radius: 12px;
+            cursor: pointer; z-index: 1000; backdrop-filter: blur(5px);
+        }
+    </style>
+</head>
+<body>
+
+    <div id="app-logo"><span>⚙️</span> ClassyTest</div>
+
+    <button class="back-btn" id="global-back" style="display:none;" onclick="exitToMenu()">← Exit</button>
+
+    <div id="screen-start" class="screen active">
+        <h1 style="font-size: 2.2rem; margin-bottom: 10px;">ClassyTest — classic display diagnostics.</h1>
+        <p style="margin-bottom: 50px; opacity: 0.6;">Click Start to see Test list</p>
+        <button class="glass-btn-large" onclick="showMenu()">Start</button>
+    </div>
+
+    <div id="screen-menu" class="screen">
+        <div class="menu-container">
+            <h2 style="margin-bottom: 20px;">Diagnostic Menu</h2>
+            <div class="test-card" onclick="runTest('multitouch')">
+                <h3>1. Multitouch</h3>
+                <p>Test real hardware touch points.</p>
+            </div>
+            <div class="test-card" onclick="runTest('display')">
+                <h3>2. Display Test</h3>
+                <p>Fill grid to find dead zones.</p>
+            </div>
+            <div class="test-card" onclick="runTest('dpi')">
+                <h3>3. DPI measurement</h3>
+                <p>Calibrate pixel scale.</p>
+            </div>
+            <div class="test-card" onclick="runTest('info')">
+                <h3 style="color: var(--accent-blue);">4. Device Screen Info</h3>
+                <p>Real hardware & OS data.</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="screen-test" class="screen">
+        <div id="canvas-container" style="width:100%; height:100%;">
+            <canvas id="mainCanvas"></canvas>
+            <div id="status-text" class="overlay-info"></div>
+        </div>
+        <div id="dpi-controls">
+            <label>X: <input type="range" id="scaleX" min="0.5" max="2" step="0.01" value="1"></label>
+            <label>Y: <input type="range" id="scaleY" min="0.5" max="2" step="0.01" value="1"></label>
+        </div>
+    </div>
+
+    <div id="screen-info" class="screen">
+        <div class="info-wrapper">
+            <div class="info-row"><div class="info-icon">📱</div><div class="info-text"><b>OS & Platform</b><div id="inf-os">-</div></div></div>
+            <div class="info-row"><div class="info-icon">🎮</div><div class="info-text"><b>GPU (Graphics)</b><div id="inf-gpu">Detecting...</div></div></div>
+            <div class="info-row"><div class="info-icon">📏</div><div class="info-text"><b>Physical Resolution</b><div id="inf-res">-</div></div></div>
+            <div class="info-row"><div class="info-icon">📐</div><div class="info-text"><b>Density (DPR)</b><div id="inf-dpi">-</div></div></div>
+            <div class="info-row"><div class="info-icon">☝️</div><div class="info-text"><b>Tested MultiTouch</b><div id="inf-touch">Unknown (Run Test first)</div></div></div>
+            <div class="info-row"><div class="info-icon">💾</div><div class="info-text"><b>Memory (RAM)</b><div id="inf-ram">Secure/Hidden</div></div></div>
+            <div class="info-row"><div class="info-icon">⚡</div><div class="info-text"><b>CPU Cores</b><div id="inf-cpu">-</div></div></div>
+        </div>
+    </div>
+
+    <script>
+        const screens = ['screen-start', 'screen-menu', 'screen-test', 'screen-info'];
+        const canvas = document.getElementById('mainCanvas');
+        const ctx = canvas.getContext('2d');
+        const statusText = document.getElementById('status-text');
+        const backBtn = document.getElementById('global-back');
+        const dpiControls = document.getElementById('dpi-controls');
+        const appLogo = document.getElementById('app-logo');
+
+        let currentMode = '';
+        let touches = [];
+        let grid = [];
+        let cols, rows, cellW, cellH, totalCells, filledCells;
+        let scaleX = 1, scaleY = 1;
+        let maxTouchDetected = 0;
+        let hasTestedTouch = false;
+
+        function showScreen(id) {
+            screens.forEach(s => document.getElementById(s).classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            
+            // Логотип виден только в меню, инфо и на старте. В ТЕСТАХ ОН ИСЧЕЗАЕТ.
+            appLogo.style.opacity = (id === 'screen-test') ? '0' : '1';
+            backBtn.style.display = (id === 'screen-test' || id === 'screen-info') ? 'block' : 'none';
+        }
+
+        function showMenu() { showScreen('screen-menu'); }
+
+        async function requestFull() {
+            try {
+                const doc = document.documentElement;
+                if (doc.requestFullscreen) await doc.requestFullscreen();
+                else if (doc.webkitRequestFullscreen) await doc.webkitRequestFullscreen();
+            } catch (e) {}
+        }
+
+        function exitToMenu() {
+            if (document.fullscreenElement || document.webkitFullscreenElement) {
+                if (document.exitFullscreen) document.exitFullscreen();
+                else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+            }
+            showMenu();
+            currentMode = '';
+            dpiControls.style.display = 'none';
+        }
+
+        function runTest(mode) {
+            currentMode = mode;
+            if (mode === 'info') {
+                fillDeviceInfo();
+                showScreen('screen-info');
+            } else {
+                requestFull();
+                showScreen('screen-test');
+                setTimeout(initCanvas, 150);
+            }
+        }
+
+        function getGPU() {
+            const canvasGPU = document.createElement('canvas');
+            const gl = canvasGPU.getContext('webgl') || canvasGPU.getContext('experimental-webgl');
+            if (gl) {
+                const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+                if (debugInfo) return gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
+            }
+            return "Generic / Unknown";
+        }
+
+        async function fillDeviceInfo() {
+            const dpr = window.devicePixelRatio || 1;
+            let osDisplay = navigator.platform;
+            if (navigator.userAgentData) {
+                const uaData = await navigator.userAgentData.getHighEntropyValues(['platformVersion', 'model']);
+                osDisplay = `${uaData.platform} (v${uaData.platformVersion})`;
+            } else {
+                if (/iPhone|iPad|iPod/.test(navigator.userAgent)) osDisplay = "iOS (Apple)";
+                else if (/Android/.test(navigator.userAgent)) osDisplay = "Android OS";
+            }
+            document.getElementById('inf-os').innerText = osDisplay;
+            document.getElementById('inf-gpu').innerText = getGPU();
+            document.getElementById('inf-ram').innerText = navigator.deviceMemory ? `~${navigator.deviceMemory} GB` : "Protected / Unknown";
+            document.getElementById('inf-res').innerText = `${screen.width * dpr} x ${screen.height * dpr} px`;
+            document.getElementById('inf-dpi').innerText = dpr.toFixed(2);
+            document.getElementById('inf-cpu').innerText = `${navigator.hardwareConcurrency || 'N/A'} Threads`;
+            
+            const touchEl = document.getElementById('inf-touch');
+            if (!hasTestedTouch) {
+                touchEl.innerText = "Unknown (Run Test first)";
+            } else {
+                touchEl.innerText = `${maxTouchDetected} point(s)`;
+            }
+        }
+
+        function initCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            statusText.innerText = '';
+            dpiControls.style.display = currentMode === 'dpi' ? 'flex' : 'none';
+
+            if (currentMode === 'display') {
+                const targetSize = window.innerWidth < 600 ? 45 : 60;
+                cols = Math.floor(canvas.width / targetSize);
+                rows = Math.floor(canvas.height / targetSize);
+                cellW = canvas.width / cols;
+                cellH = canvas.height / rows;
+                totalCells = cols * rows;
+                grid = Array(totalCells).fill(0);
+                filledCells = 0;
+                statusText.innerText = '0%';
+            }
+            render();
+        }
+
+        function render() {
+            if (currentMode === '' || currentMode === 'info') return;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            if (currentMode === 'multitouch') renderMultitouch();
+            else if (currentMode === 'display') renderDisplayTest();
+            else if (currentMode === 'dpi') renderDPITest();
+            requestAnimationFrame(render);
+        }
+
+        function renderMultitouch() {
+            statusText.innerText = touches.length;
+            if (touches.length > 0) hasTestedTouch = true;
+            if (touches.length > maxTouchDetected) maxTouchDetected = touches.length;
+            
+            touches.forEach((t, i) => {
+                const colors = ['#FF5252', '#4CAF50', '#2196F3', '#FFEB3B', '#E91E63', '#9C27B0', '#00BCD4', '#FF9800', '#795548', '#607D8B'];
+                ctx.beginPath(); ctx.arc(t.x, t.y, 60, 0, Math.PI * 2);
+                ctx.fillStyle = colors[i % colors.length]; ctx.fill();
+                ctx.strokeStyle = 'white'; ctx.lineWidth = 3; ctx.stroke();
+            });
+        }
+
+        function renderDisplayTest() {
+            for (let i = 0; i < totalCells; i++) {
+                const c = i % cols, r = Math.floor(i / cols), alt = (r + c) % 2 === 0;
+                ctx.fillStyle = grid[i] ? (alt ? '#1b5e20' : '#2e7d32') : (alt ? '#0a0a0a' : '#151515');
+                ctx.fillRect(c * cellW, r * cellH, cellW - 0.5, cellH - 0.5);
+            }
+        }
+
+        function renderDPITest() {
+            ctx.strokeStyle = '#333'; ctx.lineWidth = 1;
+            const step = 25;
+            for(let x=0; x<canvas.width; x += step * scaleX) {
+                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+            }
+            for(let y=0; y<canvas.height; y += step * scaleY) {
+                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+            }
+            ctx.fillStyle = "white"; ctx.font = "bold 14px monospace";
+            ctx.fillText(`X Scale: ${(scaleX*100).toFixed(1)}% | Y Scale: ${(scaleY*100).toFixed(1)}%`, 20, canvas.height - 80);
+        }
+
+        // УЛУЧШЕННЫЙ ИНПУТ: Исправление зависания на 3 пальцах
+        function handleInput(e) {
+            if (currentMode === '' || currentMode === 'info') return;
+            const rect = canvas.getBoundingClientRect();
+            
+            if (e.touches) {
+                // Прямое чтение списка активных касаний без задержек
+                touches = [];
+                for (let i = 0; i < e.touches.length; i++) {
+                    touches.push({
+                        x: e.touches[i].clientX - rect.left,
+                        y: e.touches[i].clientY - rect.top
+                    });
+                }
+            } else if (e.type === 'mousedown' || (e.type === 'mousemove' && e.buttons === 1)) {
+                touches = [{ x: e.clientX - rect.left, y: e.clientY - rect.top }];
+            } else {
+                touches = [];
+            }
+
+            if (currentMode === 'display' && touches.length > 0) {
+                touches.forEach(t => {
+                    const col = Math.floor(t.x / cellW), row = Math.floor(t.y / cellH), idx = row * cols + col;
+                    if (idx >= 0 && idx < totalCells && grid[idx] === 0) {
+                        grid[idx] = 1; filledCells++;
+                        statusText.innerText = Math.floor((filledCells/totalCells)*100) + '%';
+                        if (filledCells === totalCells) {
+                            setTimeout(() => { alert("Check Passed!"); exitToMenu(); }, 200);
+                        }
+                    }
+                });
+            }
+        }
+
+        // Усиленная блокировка стандартных жестов (скриншоты, зум)
+        canvas.addEventListener('touchstart', (e) => { e.preventDefault(); handleInput(e); }, {passive:false});
+        canvas.addEventListener('touchmove', (e) => { e.preventDefault(); handleInput(e); }, {passive:false});
+        canvas.addEventListener('touchend', (e) => { e.preventDefault(); handleInput(e); }, {passive:false});
+        canvas.addEventListener('touchcancel', (e) => { e.preventDefault(); handleInput(e); }, {passive:false});
+
+        canvas.addEventListener('mousedown', handleInput);
+        canvas.addEventListener('mousemove', handleInput);
+        window.addEventListener('mouseup', () => { if (currentMode !== 'multitouch') touches = []; });
+        
+        document.getElementById('scaleX').oninput = (e) => scaleX = e.target.value;
+        document.getElementById('scaleY').oninput = (e) => scaleY = e.target.value;
+        window.addEventListener('resize', () => { if(currentMode) initCanvas(); });
+
+    </script>
+</body>
+</html>
+
