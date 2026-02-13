@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <title>Display Master Test</title>
+    <title>ClassyTest — classic display diagnostics</title>
     <style>
         :root {
             --bg-dark: #121212;
@@ -22,7 +22,6 @@
             touch-action: none;
         }
 
-        /* Логотип */
         #app-logo {
             position: fixed; top: 20px; left: 20px;
             font-size: 1.2rem; font-weight: bold; z-index: 1001;
@@ -40,13 +39,15 @@
 
         .screen {
             display: none; width: 100%; height: 100%;
-            flex-direction: column; justify-content: center; align-items: center;
+            flex-direction: column; align-items: center;
             position: absolute; top: 0; left: 0;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
         }
         
         .active { display: flex; animation: fadeIn 0.4s ease-out forwards; }
 
-        .menu-container { text-align: center; max-width: 500px; width: 90%; }
+        .menu-container { text-align: center; max-width: 500px; width: 90%; margin: 80px 0; }
         
         .glass-btn-large {
             padding: 25px 80px; font-size: 1.8rem; color: white;
@@ -57,6 +58,7 @@
             font-weight: 800; transition: 0.3s;
             box-shadow: 0 0 30px rgba(46, 204, 113, 0.3);
             text-transform: uppercase; letter-spacing: 2px;
+            margin-top: 20vh;
         }
 
         .test-card {
@@ -69,7 +71,7 @@
             text-align: left;
         }
 
-        #screen-info { padding: 20px; box-sizing: border-box; justify-content: flex-start; overflow-y: auto;}
+        #screen-info { padding: 20px; box-sizing: border-box; justify-content: flex-start;}
         .info-wrapper { width: 100%; max-width: 450px; margin-top: 80px; display: grid; grid-template-columns: 1fr; gap: 10px; padding-bottom: 40px;}
         .info-row { display: flex; align-items: flex-start; gap: 15px; background: rgba(255,255,255,0.03); padding: 12px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.05); }
         .info-icon { width: 40px; height: 40px; background: #252525; border-radius: 10px; display: flex; justify-content: center; align-items: center; font-size: 1.2rem; border: 1px solid #333; flex-shrink: 0; }
@@ -80,19 +82,27 @@
         .overlay-info {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
             font-size: 8rem; font-weight: bold; color: rgba(255, 255, 255, 0.08);
-            pointer-events: none; user-select: none;
+            pointer-events: none; user-select: none; text-align: center;
+        }
+
+        #color-label {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.6); padding: 15px 30px; border-radius: 15px;
+            font-weight: bold; border: 1px solid rgba(255,255,255,0.2);
+            pointer-events: none; opacity: 0; transition: opacity 0.5s ease;
+            z-index: 1000; font-size: 1.2rem;
         }
 
         #dpi-controls {
             position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
-            background: rgba(0,0,0,0.8); padding: 15px; border-radius: 15px; display: none; gap: 15px; border: 1px solid #444;
+            background: rgba(0,0,0,0.8); padding: 15px; border-radius: 15px; display: none; gap: 15px; border: 1px solid #444; z-index: 1001;
         }
         
         .back-btn {
-            position: fixed; top: 20px; right: 20px; /* Сместил вправо, чтобы не мешать логотипу слева */
+            position: fixed; top: 20px; right: 20px;
             padding: 10px 20px; background: rgba(255,255,255,0.1);
             border: 1px solid var(--glass-border); color: white; border-radius: 12px;
-            cursor: pointer; z-index: 1000; backdrop-filter: blur(5px);
+            cursor: pointer; z-index: 1002; backdrop-filter: blur(5px);
         }
     </style>
 </head>
@@ -103,9 +113,11 @@
     <button class="back-btn" id="global-back" style="display:none;" onclick="exitToMenu()">← Exit</button>
 
     <div id="screen-start" class="screen active">
-        <h1 style="font-size: 2.2rem; margin-bottom: 10px;">ClassyTest — classic display diagnostics.</h1>
-        <p style="margin-bottom: 50px; opacity: 0.6;">Click Start to see Test list</p>
-        <button class="glass-btn-large" onclick="showMenu()">Start</button>
+        <div class="menu-container">
+            <h1 style="font-size: 2.2rem; margin-bottom: 10px;">ClassyTest</h1>
+            <p style="opacity: 0.6;">Click Start to see Test list</p>
+            <button class="glass-btn-large" onclick="showMenu()">Start</button>
+        </div>
     </div>
 
     <div id="screen-menu" class="screen">
@@ -123,17 +135,22 @@
                 <h3>3. DPI measurement</h3>
                 <p>Calibrate pixel scale.</p>
             </div>
+            <div class="test-card" onclick="runTest('color')">
+                <h3 style="color: var(--primary-green);">4. Color Test</h3>
+                <p>Detect dead pixels and color balance.</p>
+            </div>
             <div class="test-card" onclick="runTest('info')">
-                <h3 style="color: var(--accent-blue);">4. Device Screen Info</h3>
+                <h3 style="color: var(--accent-blue);">5. Device Screen Info</h3>
                 <p>Real hardware & OS data.</p>
             </div>
         </div>
     </div>
 
-    <div id="screen-test" class="screen">
+    <div id="screen-test" class="screen" style="overflow:hidden;">
         <div id="canvas-container" style="width:100%; height:100%;">
             <canvas id="mainCanvas"></canvas>
             <div id="status-text" class="overlay-info"></div>
+            <div id="color-label"></div>
         </div>
         <div id="dpi-controls">
             <label>X: <input type="range" id="scaleX" min="0.5" max="2" step="0.01" value="1"></label>
@@ -144,11 +161,11 @@
     <div id="screen-info" class="screen">
         <div class="info-wrapper">
             <div class="info-row"><div class="info-icon">📱</div><div class="info-text"><b>OS & Platform</b><div id="inf-os">-</div></div></div>
-            <div class="info-row"><div class="info-icon">🎮</div><div class="info-text"><b>GPU (Graphics)</b><div id="inf-gpu">Detecting...</div></div></div>
-            <div class="info-row"><div class="info-icon">📏</div><div class="info-text"><b>Physical Resolution</b><div id="inf-res">-</div></div></div>
+            <div class="info-row"><div class="info-icon">🎮</div><div class="info-text"><b>GPU</b><div id="inf-gpu">Detecting...</div></div></div>
+            <div class="info-row"><div class="info-icon">📏</div><div class="info-text"><b>Resolution</b><div id="inf-res">-</div></div></div>
             <div class="info-row"><div class="info-icon">📐</div><div class="info-text"><b>Density (DPR)</b><div id="inf-dpi">-</div></div></div>
-            <div class="info-row"><div class="info-icon">☝️</div><div class="info-text"><b>Tested MultiTouch</b><div id="inf-touch">Unknown (Run Test first)</div></div></div>
-            <div class="info-row"><div class="info-icon">💾</div><div class="info-text"><b>Memory (RAM)</b><div id="inf-ram">Secure/Hidden</div></div></div>
+            <div class="info-row"><div class="info-icon">☝️</div><div class="info-text"><b>Touch Record</b><div id="inf-touch">Unknown</div></div></div>
+            <div class="info-row"><div class="info-icon">💾</div><div class="info-text"><b>RAM</b><div id="inf-ram">-</div></div></div>
             <div class="info-row"><div class="info-icon">⚡</div><div class="info-text"><b>CPU Cores</b><div id="inf-cpu">-</div></div></div>
         </div>
     </div>
@@ -158,6 +175,7 @@
         const canvas = document.getElementById('mainCanvas');
         const ctx = canvas.getContext('2d');
         const statusText = document.getElementById('status-text');
+        const colorLabel = document.getElementById('color-label');
         const backBtn = document.getElementById('global-back');
         const dpiControls = document.getElementById('dpi-controls');
         const appLogo = document.getElementById('app-logo');
@@ -170,11 +188,18 @@
         let maxTouchDetected = 0;
         let hasTestedTouch = false;
 
+        let colorIdx = 0;
+        let colorTimer; 
+        const testColors = [
+            {n: 'Red', h: '#FF0000'}, {n: 'Green', h: '#00FF00'}, {n: 'Blue', h: '#0000FF'},
+            {n: 'White', h: '#FFFFFF'}, {n: 'Light Grey', h: '#bcbcbc'}, {n: 'Grey', h: '#808080'},
+            {n: 'Dark Grey', h: '#333333'}, {n: 'Black', h: '#000000'}, {n: 'Yellow', h: '#FFFF00'},
+            {n: 'Magenta', h: '#FF00FF'}, {n: 'Cyan', h: '#00FFFF'}
+        ];
+
         function showScreen(id) {
             screens.forEach(s => document.getElementById(s).classList.remove('active'));
             document.getElementById(id).classList.add('active');
-            
-            // Логотип виден только в меню, инфо и на старте. В ТЕСТАХ ОН ИСЧЕЗАЕТ.
             appLogo.style.opacity = (id === 'screen-test') ? '0' : '1';
             backBtn.style.display = (id === 'screen-test' || id === 'screen-info') ? 'block' : 'none';
         }
@@ -196,7 +221,9 @@
             }
             showMenu();
             currentMode = '';
+            touches = [];
             dpiControls.style.display = 'none';
+            colorLabel.style.opacity = '0';
         }
 
         function runTest(mode) {
@@ -208,6 +235,7 @@
                 requestFull();
                 showScreen('screen-test');
                 setTimeout(initCanvas, 150);
+                if(mode === 'color') updateColorDisplay();
             }
         }
 
@@ -218,32 +246,27 @@
                 const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
                 if (debugInfo) return gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
             }
-            return "Generic / Unknown";
+            return "N/A";
         }
 
         async function fillDeviceInfo() {
             const dpr = window.devicePixelRatio || 1;
-            let osDisplay = navigator.platform;
-            if (navigator.userAgentData) {
-                const uaData = await navigator.userAgentData.getHighEntropyValues(['platformVersion', 'model']);
-                osDisplay = `${uaData.platform} (v${uaData.platformVersion})`;
-            } else {
-                if (/iPhone|iPad|iPod/.test(navigator.userAgent)) osDisplay = "iOS (Apple)";
-                else if (/Android/.test(navigator.userAgent)) osDisplay = "Android OS";
-            }
-            document.getElementById('inf-os').innerText = osDisplay;
+            document.getElementById('inf-os').innerText = navigator.platform;
             document.getElementById('inf-gpu').innerText = getGPU();
-            document.getElementById('inf-ram').innerText = navigator.deviceMemory ? `~${navigator.deviceMemory} GB` : "Protected / Unknown";
+            document.getElementById('inf-ram').innerText = navigator.deviceMemory ? `~${navigator.deviceMemory} GB` : "Secure";
             document.getElementById('inf-res').innerText = `${screen.width * dpr} x ${screen.height * dpr} px`;
             document.getElementById('inf-dpi').innerText = dpr.toFixed(2);
-            document.getElementById('inf-cpu').innerText = `${navigator.hardwareConcurrency || 'N/A'} Threads`;
-            
-            const touchEl = document.getElementById('inf-touch');
-            if (!hasTestedTouch) {
-                touchEl.innerText = "Unknown (Run Test first)";
-            } else {
-                touchEl.innerText = `${maxTouchDetected} point(s)`;
-            }
+            document.getElementById('inf-cpu').innerText = `${navigator.hardwareConcurrency || 'N/A'} Cores`;
+            document.getElementById('inf-touch').innerText = hasTestedTouch ? `${maxTouchDetected} points` : "Unknown";
+        }
+
+        function updateColorDisplay() {
+            const c = testColors[colorIdx];
+            colorLabel.innerText = `${c.n} - ${c.h}`;
+            colorLabel.style.color = (c.n === 'White' || c.n === 'Yellow' || c.n === 'Cyan') ? 'black' : 'white';
+            colorLabel.style.opacity = '1';
+            clearTimeout(colorTimer);
+            colorTimer = setTimeout(() => { colorLabel.style.opacity = '0'; }, 2000);
         }
 
         function initCanvas() {
@@ -272,6 +295,7 @@
             if (currentMode === 'multitouch') renderMultitouch();
             else if (currentMode === 'display') renderDisplayTest();
             else if (currentMode === 'dpi') renderDPITest();
+            else if (currentMode === 'color') renderColorTest();
             requestAnimationFrame(render);
         }
 
@@ -279,7 +303,6 @@
             statusText.innerText = touches.length;
             if (touches.length > 0) hasTestedTouch = true;
             if (touches.length > maxTouchDetected) maxTouchDetected = touches.length;
-            
             touches.forEach((t, i) => {
                 const colors = ['#FF5252', '#4CAF50', '#2196F3', '#FFEB3B', '#E91E63', '#9C27B0', '#00BCD4', '#FF9800', '#795548', '#607D8B'];
                 ctx.beginPath(); ctx.arc(t.x, t.y, 60, 0, Math.PI * 2);
@@ -297,36 +320,32 @@
         }
 
         function renderDPITest() {
-            ctx.strokeStyle = '#333'; ctx.lineWidth = 1;
-            const step = 25;
-            for(let x=0; x<canvas.width; x += step * scaleX) {
-                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
-            }
-            for(let y=0; y<canvas.height; y += step * scaleY) {
-                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
-            }
-            ctx.fillStyle = "white"; ctx.font = "bold 14px monospace";
-            ctx.fillText(`X Scale: ${(scaleX*100).toFixed(1)}% | Y Scale: ${(scaleY*100).toFixed(1)}%`, 20, canvas.height - 80);
+            ctx.strokeStyle = '#333';
+            for(let x=0; x<canvas.width; x += 25 * scaleX) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,canvas.height); ctx.stroke(); }
+            for(let y=0; y<canvas.height; y += 25 * scaleY) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(canvas.width,y); ctx.stroke(); }
         }
 
-        // УЛУЧШЕННЫЙ ИНПУТ: Исправление зависания на 3 пальцах
+        function renderColorTest() {
+            ctx.fillStyle = testColors[colorIdx].h;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+
         function handleInput(e) {
             if (currentMode === '' || currentMode === 'info') return;
             const rect = canvas.getBoundingClientRect();
             
+            if ((e.type === 'touchstart' || e.type === 'mousedown') && currentMode === 'color') {
+                colorIdx = (colorIdx + 1) % testColors.length;
+                updateColorDisplay();
+                return;
+            }
+
             if (e.touches) {
-                // Прямое чтение списка активных касаний без задержек
-                touches = [];
-                for (let i = 0; i < e.touches.length; i++) {
-                    touches.push({
-                        x: e.touches[i].clientX - rect.left,
-                        y: e.touches[i].clientY - rect.top
-                    });
-                }
-            } else if (e.type === 'mousedown' || (e.type === 'mousemove' && e.buttons === 1)) {
+                touches = Array.from(e.touches).map(t => ({ x: t.clientX - rect.left, y: t.clientY - rect.top }));
+            } else if (e.type === 'mousedown') {
                 touches = [{ x: e.clientX - rect.left, y: e.clientY - rect.top }];
-            } else {
-                touches = [];
+            } else if (e.type === 'touchend' || e.type === 'touchcancel' || e.type === 'mouseup') {
+                touches = (e.touches && e.touches.length > 0) ? Array.from(e.touches).map(t => ({ x: t.clientX - rect.left, y: t.clientY - rect.top })) : [];
             }
 
             if (currentMode === 'display' && touches.length > 0) {
@@ -335,23 +354,25 @@
                     if (idx >= 0 && idx < totalCells && grid[idx] === 0) {
                         grid[idx] = 1; filledCells++;
                         statusText.innerText = Math.floor((filledCells/totalCells)*100) + '%';
+                        // ПРОВЕРКА НА 100% ЗАПОЛНЕНИЕ
                         if (filledCells === totalCells) {
-                            setTimeout(() => { alert("Check Passed!"); exitToMenu(); }, 200);
+                            setTimeout(() => { 
+                                alert("Check Passed!"); 
+                                exitToMenu(); 
+                            }, 200);
                         }
                     }
                 });
             }
         }
 
-        // Усиленная блокировка стандартных жестов (скриншоты, зум)
         canvas.addEventListener('touchstart', (e) => { e.preventDefault(); handleInput(e); }, {passive:false});
         canvas.addEventListener('touchmove', (e) => { e.preventDefault(); handleInput(e); }, {passive:false});
-        canvas.addEventListener('touchend', (e) => { e.preventDefault(); handleInput(e); }, {passive:false});
-        canvas.addEventListener('touchcancel', (e) => { e.preventDefault(); handleInput(e); }, {passive:false});
-
+        canvas.addEventListener('touchend', (e) => { handleInput(e); }, {passive:false});
+        canvas.addEventListener('touchcancel', (e) => { handleInput(e); }, {passive:false});
         canvas.addEventListener('mousedown', handleInput);
-        canvas.addEventListener('mousemove', handleInput);
-        window.addEventListener('mouseup', () => { if (currentMode !== 'multitouch') touches = []; });
+        canvas.addEventListener('mousemove', (e) => { if(e.buttons === 1) handleInput(e); });
+        window.addEventListener('mouseup', (e) => { handleInput(e); });
         
         document.getElementById('scaleX').oninput = (e) => scaleX = e.target.value;
         document.getElementById('scaleY').oninput = (e) => scaleY = e.target.value;
@@ -360,4 +381,3 @@
     </script>
 </body>
 </html>
-
